@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Canvas</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --sidebar-bg: rgba(255, 255, 255, 0.9);
+            --widget-bg: rgba(255, 255, 255, 0.95);
+            --text-color: #1d1d1f;
+            --accent-color: #0071e3;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            --toggle-color: #1d1d1f;
+            --scrollbar-color: #e0e0e0;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --sidebar-bg: rgba(30, 30, 30, 0.9);
+            --widget-bg: rgba(30, 30, 30, 0.95);
+            --text-color: #ffffff;
+            --accent-color: #1e88e5;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            --toggle-color: #ffffff;
+            --scrollbar-color: #555;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            animation: fadeInBody 1.5s ease-in forwards;
+        }
+
+        @keyframes fadeInBody {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #welcome-text {
+            position: fixed;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--text-color);
+            z-index: 1002;
+            opacity: 0;
+            animation: welcomeAnimation 4s ease-in-out forwards;
+        }
+
+        @keyframes welcomeAnimation {
+            0% { opacity: 0; top: -50px; }
+            25% { opacity: 1; top: 50px; }
+            75% { opacity: 1; top: 50px; }
+            100% { opacity: 0; top: 50px; }
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        #sidebar {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(10px);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        #sidebar h1 {
+            margin-top: 40px;
+            font-size: 24px;
+        }
+
+        #sidebar h2 {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+
+        #sidebar::-webkit-scrollbar,
+        .todo-list ul::-webkit-scrollbar,
+        .dictionary-result::-webkit-scrollbar,
+        .formula-list::-webkit-scrollbar,
+        .grade-table::-webkit-scrollbar,
+        .notes-textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #sidebar::-webkit-scrollbar-track,
+        .todo-list ul::-webkit-scrollbar-track,
+        .dictionary-result::-webkit-scrollbar-track,
+        .formula-list::-webkit-scrollbar-track,
+        .grade-table::-webkit-scrollbar-track,
+        .notes-textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #sidebar::-webkit-scrollbar-thumb,
+        .todo-list ul::-webkit-scrollbar-thumb,
+        .dictionary-result::-webkit-scrollbar-thumb,
+        .formula-list::-webkit-scrollbar-thumb,
+        .grade-table::-webkit-scrollbar-thumb,
+        .notes-textarea::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-color);
+            border-radius: 4px;
+        }
+
+        #sidebar::-webkit-scrollbar-thumb:hover,
+        .todo-list ul::-webkit-scrollbar-thumb:hover,
+        .dictionary-result::-webkit-scrollbar-thumb:hover,
+        .formula-list::-webkit-scrollbar-thumb:hover,
+        .grade-table::-webkit-scrollbar-thumb:hover,
+        .notes-textarea::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        #sidebar.open {
+            left: 0;
+        }
+
+        #sidebar-toggle {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--sidebar-bg);
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 20px;
+            color: var(--toggle-color);
+        }
+
+        .widget-tile {
+            padding: 15px;
+            margin: 10px 0;
+            background: var(--widget-bg);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .widget-tile:hover {
+            transform: translateX(5px);
+        }
+
+        .widget {
+            position: absolute;
+            background: var(--widget-bg);
+            border-radius: 16px;
+            padding: 15px;
+            min-width: 200px;
+            min-height: 150px;
+            box-shadow: var(--shadow);
+            resize: both;
+            overflow: hidden; /* Changed to hidden to prevent scrollbars */
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: move;
+        }
+
+        .widget-close {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .timer-controls button,
+        .pomodoro-controls button,
+        .calc-buttons button,
+        .stopwatch-controls button,
+        .dictionary-controls button,
+        .grade-controls button,
+        .music-controls button,
+        .notes-controls button {
+            padding: 8px 16px;
+            margin: 5px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .todo-list input,
+        .converter select,
+        .converter input,
+        .calc-input,
+        .image-upload,
+        .timer-input,
+        .dictionary-input,
+        .grade-input,
+        .pdf-upload {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
+            background: transparent;
+            color: var(--text-color);
+        }
+
+        .todo-list ul {
+            list-style: none;
+            padding: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .todo-list li {
+            padding: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .notes-textarea {
+            width: calc(100% - 20px);
+            margin: 0 auto;
+            flex-grow: 1;
+            border: none;
+            resize: none;
+            background: transparent;
+            color: var(--text-color);
+            font-family: inherit;
+            overflow-x: hidden;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .notes-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .drawing-board {
+            width: calc(100% - 20px); /* Adjusted for padding */
+            height: calc(100% - 50px); /* Adjusted for header */
+            margin: 0 auto; /* Centered horizontally */
+            background: white;
+            border-radius: 8px;
+            cursor: crosshair;
+            flex-grow: 1;
+        }
+
+        .converter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .timer-display,
+        .pomo-display,
+        .stopwatch-display {
+            font-size: 24px;
+            text-align: center;
+            margin: 10px 0;
+            transition: font-size 0.2s ease;
+        }
+
+        .clicker-area {
+            width: 100%;
+            height: calc(100% - 50px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            flex-grow: 1;
+        }
+
+        .clicker-area:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .image-display {
+            width: 100%;
+            max-width: 500px;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .image-upload,
+        .pdf-upload {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .game-area {
+            width: 100%;
+            height: calc(100% - 50px);
+            background: white;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .game-target {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .game-score {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        .dictionary-result {
+            width: 100%;
+            max-height: calc(100% - 70px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+            flex-grow: 1;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .dictionary-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .dictionary-entry strong {
+            color: var(--accent-color);
+        }
+
+        .formula-list {
+            width: 100%;
+            max-height: calc(100% - 50px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+            flex-grow: 1;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .formula-section {
+            margin-bottom: 15px;
+        }
+
+        .formula-section h4 {
+            margin: 0 0 5px 0;
+            color: var(--accent-color);
+            font-size: 16px;
+        }
+
+        .formula-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .formula-section li {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .grade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .grade-table th, .grade-table td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px;
+            text-align: left;
+        }
+
+        .grade-table th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .grade-table input {
+            width: 100%;
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+        .grade-result {
+            font-size: 18px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .pdf-viewer {
+            width: 100%;
+            height: calc(100% - 70px);
+            border: none;
+            border-radius: 8px;
+            flex-grow: 1;
+        }
+
+        .music-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #info-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            background: var(--widget-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 18px;
+            color: var(--text-color);
+            box-shadow: var(--shadow);
+        }
+
+        #info-icon:hover::after {
+            content: "StudiumOS v9";
+            position: absolute;
+            bottom: 40px;
+            right: 0;
+            padding: 5px 10px;
+            background: var(--widget-bg);
+            border-radius: 8px;
+            font-size: 14px;
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+        }
+
+        #settings-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 60px;
+            width: 30px;
+            height: 30px;
+            background: var(--widget-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 18px;
+            color: var(--text-color);
+            box-shadow: var(--shadow);
+        }
+
+        #settings-panel {
+            position: fixed;
+            bottom: 60px;
+            right: 60px;
+            background: var(--widget-bg);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            display: none;
+            z-index: 1002;
+        }
+
+        #settings-panel button {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcome-text">Welcome to StudiumOS</div>
+    <div id="canvas"></div>
+    <button id="sidebar-toggle">☰</button>
+    <div id="sidebar">
+        <h1>StudiumOS</h1>
+        <h2>Widgets</h2>
+        <div class="widget-tile" data-type="timer">Countdown Timer</div>
+        <div class="widget-tile" data-type="todo">To-Do List</div>
+        <div class="widget-tile" data-type="notes">Sticky Notes</div>
+        <div class="widget-tile" data-type="drawing">Drawing Board</div>
+        <div class="widget-tile" data-type="pomodoro">Pomodoro Timer</div>
+        <div class="widget-tile" data-type="converter">Unit Converter</div>
+        <div class="widget-tile" data-type="clicker">Satisfying Clicker</div>
+        <div class="widget-tile" data-type="image">Image Upload</div>
+        <div class="widget-tile" data-type="calculator">Scientific Calculator</div>
+        <div class="widget-tile" data-type="game">Game</div>
+        <div class="widget-tile" data-type="stopwatch">Stopwatch</div>
+        <div class="widget-tile" data-type="dictionary">Dictionary</div>
+        <div class="widget-tile" data-type="formula">Formulas</div>
+        <div class="widget-tile" data-type="grade">Grade Calculator</div>
+        <div class="widget-tile" data-type="pdf">PDF Viewer</div>
+        <div class="widget-tile" data-type="music">Background Music</div>
+    </div>
+    <input type="file" id="background-upload" accept="image/*" style="display: none;" onchange="setBackground()">
+    <div id="info-icon">i</div>
+    <div id="settings-icon">⚙</div>
+    <div id="settings-panel">
+        <button id="theme-toggle">Dark Mode</button>
+        <button id="background-toggle">Background</button>
+        <button id="reset-button">Reset</button>
+    </div>
+    <audio id="timer-end-sound" src="https://www.soundjay.com/buttons/beep-01a.mp3" preload="auto"></audio>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const themeToggle = document.getElementById('theme-toggle');
+        const backgroundToggle = document.getElementById('background-toggle');
+        const resetButton = document.getElementById('reset-button');
+        const backgroundUpload = document.getElementById('background-upload');
+        const timerEndSound = document.getElementById('timer-end-sound');
+        const settingsIcon = document.getElementById('settings-icon');
+        const settingsPanel = document.getElementById('settings-panel');
+        let widgetId = 0;
+
+        // Sidebar toggle
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Theme toggle
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.body.dataset.theme === 'dark';
+            document.body.dataset.theme = isDark ? '' : 'dark';
+            themeToggle.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+            settingsPanel.style.display = 'none';
+        });
+
+        // Background toggle
+        backgroundToggle.addEventListener('click', () => {
+            backgroundUpload.click();
+            settingsPanel.style.display = 'none';
+        });
+
+        // Reset button
+        resetButton.addEventListener('click', () => {
+            const widgets = document.querySelectorAll('.widget');
+            widgets.forEach(widget => widget.remove());
+            document.body.style.backgroundImage = '';
+            settingsPanel.style.display = 'none';
+        });
+
+        // Settings icon toggle
+        settingsIcon.addEventListener('click', () => {
+            settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        function setBackground() {
+            const file = backgroundUpload.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.body.style.backgroundImage = `url(${e.target.result})`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Widget creation
+        sidebar.addEventListener('click', (e) => {
+            const tile = e.target.closest('.widget-tile');
+            if (!tile) return;
+
+            const type = tile.dataset.type;
+            createWidget(type);
+            sidebar.classList.remove('open');
+        });
+
+        function createWidget(type) {
+            const widget = document.createElement('div');
+            widget.className = 'widget';
+            widget.id = `widget-${widgetId++}`;
+            widget.style.left = '100px';
+            widget.style.top = '100px';
+            if (type === 'formula') {
+                widget.style.width = '250px';
+                widget.style.height = '300px';
+            } else if (type === 'drawing') {
+                widget.style.width = '350px'; // Slightly larger initial size
+                widget.style.height = '400px'; // Balanced, not too big
+            }
+
+            let content = '';
+            switch(type) {
+                case 'timer':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Countdown Timer</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <input type="number" id="timer-input-${widgetId}" class="timer-input" placeholder="Seconds" min="1">
+                        <div id="timer-${widgetId}" class="timer-display">00:00:00</div>
+                        <div class="timer-controls">
+                            <button onclick="startCountdown('${widgetId}')">Start</button>
+                            <button onclick="stopCountdown('${widgetId}')">Stop</button>
+                            <button onclick="resetCountdown('${widgetId}')">Reset</button>
+                        </div>
+                    `;
+                    break;
+                case 'todo':
+                    content = `
+                        <div class="widget-header">
+                            <h3>To-Do List</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div class="todo-list">
+                            <input type="text" id="todo-input-${widgetId}" placeholder="Add task..." 
+                                onkeypress="if(event.key === 'Enter') addTodo('${widgetId}')">
+                            <ul id="todo-${widgetId}"></ul>
+                        </div>
+                    `;
+                    break;
+                case 'notes':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Sticky Notes</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <textarea class="notes-textarea" id="notes-${widgetId}" placeholder="Type your notes..."></textarea>
+                        <div class="notes-controls">
+                            <button onclick="changeFontSize('${widgetId}', 2)">Size +</button>
+                            <button onclick="changeFontSize('${widgetId}', -2)">Size -</button>
+                        </div>
+                    `;
+                    break;
+                case 'drawing':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Drawing Board</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <canvas class="drawing-board" id="canvas-${widgetId}"></canvas>
+                    `;
+                    break;
+                case 'pomodoro':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Pomodoro Timer</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div id="pomo-${widgetId}" class="pomo-display">25:00</div>
+                        <div class="pomodoro-controls">
+                            <button onclick="startPomodoro('${widgetId}', 25)">Work</button>
+                            <button onclick="startPomodoro('${widgetId}', 5)">Break</button>
+                            <button onclick="stopPomodoro('${widgetId}')">Stop</button>
+                        </div>
+                    `;
+                    break;
+                case 'converter':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Unit Converter</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div class="converter">
+                            <select id="converter-type-${widgetId}" onchange="updateConverter('${widgetId}')">
+                                <option value="length">Length</option>
+                                <option value="weight">Weight</option>
+                                <option value="temperature">Temperature</option>
+                                <option value="area">Area</option>
+                                <option value="volume">Volume</option>
+                                <option value="speed">Speed</option>
+                                <option value="energy">Energy</option>
+                            </select>
+                            <div class="converter-grid" id="converter-grid-${widgetId}">
+                                <input type="number" id="converter-input-${widgetId}" oninput="convertUnits('${widgetId}')">
+                                <select id="converter-from-${widgetId}" oninput="convertUnits('${widgetId}')"></select>
+                                <input type="number" id="converter-output-${widgetId}" readonly>
+                                <select id="converter-to-${widgetId}" oninput="convertUnits('${widgetId}')"></select>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'clicker':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Satisfying Clicker</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div class="clicker-area" id="clicker-${widgetId}" onclick="clickCounter('${widgetId}')">0</div>
+                    `;
+                    break;
+                case 'image':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Image</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <img id="image-${widgetId}" class="image-display" src="" alt="Upload an image">
+                        <input type="file" id="image-upload-${widgetId}" class="image-upload" accept="image/*" onchange="uploadImage('${widgetId}')">
+                    `;
+                    break;
+                case 'calculator':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Scientific Calculator</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <input type="text" id="calc-input-${widgetId}" class="calc-input" readonly>
+                        <div class="calc-buttons">
+                            <button onclick="calcInput('${widgetId}', 'sin(')">sin</button>
+                            <button onclick="calcInput('${widgetId}', 'cos(')">cos</button>
+                            <button onclick="calcInput('${widgetId}', 'tan(')">tan</button>
+                            <button onclick="calcInput('${widgetId}', 'log(')">log</button>
+                            <button onclick="calcInput('${widgetId}', 'sqrt(')">√</button>
+                            <button onclick="calcInput('${widgetId}', '(')"> ( </button>
+                            <button onclick="calcInput('${widgetId}', ')')"> ) </button>
+                            <button onclick="calcInput('${widgetId}', '^')">^</button>
+                            <button onclick="calcInput('${widgetId}', 'pi')">π</button>
+                            <button onclick="calcClear('${widgetId}')">C</button>
+                            <button onclick="calcInput('${widgetId}', '7')">7</button>
+                            <button onclick="calcInput('${widgetId}', '8')">8</button>
+                            <button onclick="calcInput('${widgetId}', '9')">9</button>
+                            <button onclick="calcInput('${widgetId}', '/')">/</button>
+                            <button onclick="calcInput('${widgetId}', 'e')">e</button>
+                            <button onclick="calcInput('${widgetId}', '4')">4</button>
+                            <button onclick="calcInput('${widgetId}', '5')">5</button>
+                            <button onclick="calcInput('${widgetId}', '6')">6</button>
+                            <button onclick="calcInput('${widgetId}', '*')">×</button>
+                            <button onclick="calcInput('${widgetId}', '%')">%</button>
+                            <button onclick="calcInput('${widgetId}', '1')">1</button>
+                            <button onclick="calcInput('${widgetId}', '2')">2</button>
+                            <button onclick="calcInput('${widgetId}', '3')">3</button>
+                            <button onclick="calcInput('${widgetId}', '-')">-</button>
+                            <button onclick="calcBackspace('${widgetId}')">⌫</button>
+                            <button onclick="calcInput('${widgetId}', '0')">0</button>
+                            <button onclick="calcInput('${widgetId}', '.')">.</button>
+                            <button onclick="calcInput('${widgetId}', '+')">+</button>
+                            <button onclick="calcResult('${widgetId}')">=</button>
+                            <button onclick="calcInput('${widgetId}', 'ln(')">ln</button>
+                        </div>
+                    `;
+                    break;
+                case 'game':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Game</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div class="game-area" id="game-area-${widgetId}">
+                            <div class="game-target" id="game-target-${widgetId}" onclick="catchTarget('${widgetId}')"></div>
+                            <div class="game-score" id="game-score-${widgetId}">Score: 0</div>
+                        </div>
+                    `;
+                    break;
+                case 'stopwatch':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Stopwatch</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div id="stopwatch-${widgetId}" class="stopwatch-display">00:00:00</div>
+                        <div class="stopwatch-controls">
+                            <button onclick="startStopwatch('${widgetId}')">Start</button>
+                            <button onclick="stopStopwatch('${widgetId}')">Stop</button>
+                            <button onclick="resetStopwatch('${widgetId}')">Reset</button>
+                        </div>
+                    `;
+                    break;
+                case 'dictionary':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Dictionary</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <input type="text" id="dictionary-input-${widgetId}" class="dictionary-input" placeholder="Enter word">
+                        <div class="dictionary-controls">
+                            <button onclick="lookupWord('${widgetId}')">Lookup</button>
+                        </div>
+                        <div id="dictionary-result-${widgetId}" class="dictionary-result"></div>
+                    `;
+                    break;
+                case 'formula':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Formulas</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <div class="formula-list" id="formula-list-${widgetId}">
+                            <div class="formula-section">
+                                <h4>Math Formulas</h4>
+                                <ul>
+                                    <li>Area of a Circle: A = πr²</li>
+                                    <li>Area of a Rectangle: A = lw</li>
+                                    <li>Area of a Triangle: A = ½bh</li>
+                                    <li>Area of a Trapezoid: A = ½(a + b)h</li>
+                                    <li>Volume of a Cube: V = s³</li>
+                                    <li>Volume of a Sphere: V = ⁴⁄₃πr³</li>
+                                    <li>Volume of a Cylinder: V = πr²h</li>
+                                    <li>Volume of a Cone: V = ⅓πr²h</li>
+                                    <li>Pythagorean Theorem: a² + b² = c²</li>
+                                    <li>Quadratic Formula: x = [-b ± √(b² - 4ac)] / 2a</li>
+                                    <li>Circumference of a Circle: C = 2πr</li>
+                                </ul>
+                            </div>
+                            <div class="formula-section">
+                                <h4>Physics Formulas</h4>
+                                <ul>
+                                    <li>Velocity: v = d/t</li>
+                                    <li>Acceleration: a = Δv/Δt</li>
+                                    <li>Newton's Second Law: F = ma</li>
+                                    <li>Kinetic Energy: KE = ½mv²</li>
+                                    <li>Potential Energy: PE = mgh</li>
+                                    <li>Work: W = Fd</li>
+                                    <li>Power: P = W/t</li>
+                                    <li>Momentum: p = mv</li>
+                                    <li>Force of Gravity: F = Gm₁m₂/r²</li>
+                                    <li>Ohm's Law: V = IR</li>
+                                    <li>Density: ρ = m/V</li>
+                                </ul>
+                            </div>
+                            <div class="formula-section">
+                                <h4>Chemistry Formulas</h4>
+                                <ul>
+                                    <li>Ideal Gas Law: PV = nRT</li>
+                                    <li>Molarity: M = moles/L</li>
+                                    <li>pH: pH = -log[H⁺]</li>
+                                    <li>Boyle's Law: P₁V₁ = P₂V₂</li>
+                                    <li>Charles's Law: V₁/T₁ = V₂/T₂</li>
+                                    <li>Avogadro's Number: 6.022 × 10²³</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'grade':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Grade Calculator</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <table class="grade-table" id="grade-table-${widgetId}">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Score</th>
+                                    <th>Weight (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="grade-rows-${widgetId}">
+                                <tr>
+                                    <td><input type="text" class="grade-input" placeholder="Assignment"></td>
+                                    <td><input type="number" class="grade-input" placeholder="Score" min="0"></td>
+                                    <td><input type="number" class="grade-input" placeholder="Weight" min="0" max="100"></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" class="grade-input" placeholder="Assignment"></td>
+                                    <td><input type="number" class="grade-input" placeholder="Score" min="0"></td>
+                                    <td><input type="number" class="grade-input" placeholder="Weight" min="0" max="100"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="grade-controls">
+                            <button onclick="addGradeRow('${widgetId}')">Add Row</button>
+                            <button onclick="calculateGrade('${widgetId}')">Calculate</button>
+                        </div>
+                        <div id="grade-result-${widgetId}" class="grade-result"></div>
+                    `;
+                    break;
+                case 'pdf':
+                    content = `
+                        <div class="widget-header">
+                            <h3>PDF Viewer</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <iframe id="pdf-viewer-${widgetId}" class="pdf-viewer" src=""></iframe>
+                        <input type="file" id="pdf-upload-${widgetId}" class="pdf-upload" accept=".pdf" onchange="loadPDF('${widgetId}')">
+                    `;
+                    break;
+                case 'music':
+                    content = `
+                        <div class="widget-header">
+                            <h3>Background Music</h3>
+                            <button class="widget-close">×</button>
+                        </div>
+                        <audio id="music-player-${widgetId}" controls autoplay loop>
+                            <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <div class="music-controls">
+                            <button onclick="toggleMusic('${widgetId}')">Play/Pause</button>
+                        </div>
+                    `;
+                    break;
+            }
+
+            widget.innerHTML = content;
+            canvas.appendChild(widget);
+            makeDraggable(widget);
+            initWidgetFunctions(widget, type);
+
+            const resizeObserver = new ResizeObserver(() => adjustContent(widget, type));
+            resizeObserver.observe(widget);
+        }
+
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const header = element.querySelector('.widget-header');
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                if (e.target.className === 'widget-close') return;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+
+            element.querySelector('.widget-close').addEventListener('click', () => {
+                element.remove();
+            });
+        }
+
+        // Widget functionality
+        const timers = {};
+        const pomodoros = {};
+        const clickers = {};
+        const calcStates = {};
+        const drawingContexts = {};
+        const gameStates = {};
+        const stopwatches = {};
+        const dictionaryStates = {};
+
+        function initWidgetFunctions(widget, type) {
+            const id = widget.id.split('-')[1];
+            if (type === 'drawing') {
+                const canvas = widget.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                drawingContexts[widget.id] = { ctx: ctx, imgData: null };
+                let painting = false;
+
+                function resizeCanvas() {
+                    const newWidth = widget.clientWidth - 30; // Account for padding
+                    const newHeight = widget.clientHeight - 50; // Account for header
+                    const prevImgData = drawingContexts[widget.id].imgData;
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    if (prevImgData) {
+                        ctx.putImageData(prevImgData, 0, 0);
+                    }
+                    drawingContexts[widget.id].imgData = ctx.getImageData(0, 0, newWidth, newHeight);
+                }
+
+                resizeCanvas();
+
+                function startDrawing(e) {
+                    painting = true;
+                    ctx.beginPath();
+                    draw(e);
+                    e.stopPropagation();
+                }
+
+                function stopDrawing() {
+                    painting = false;
+                    ctx.beginPath();
+                    drawingContexts[widget.id].imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                }
+
+                function draw(e) {
+                    if (!painting) return;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(e.offsetX, e.offsetY);
+                }
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseleave', stopDrawing);
+
+                // Observe resize to adjust canvas
+                const resizeObserver = new ResizeObserver(() => resizeCanvas());
+                resizeObserver.observe(widget);
+            } else if (type === 'converter') {
+                updateConverter(id);
+            } else if (type === 'clicker') {
+                clickers[widgetId] = 0;
+            } else if (type === 'calculator') {
+                calcStates[widgetId] = '';
+            } else if (type === 'game') {
+                gameStates[widgetId] = { score: 0 };
+                moveTarget(widgetId);
+            } else if (type === 'timer') {
+                timers[widgetId] = { time: 0, interval: null, lastTick: null };
+            } else if (type === 'stopwatch') {
+                stopwatches[widgetId] = { time: 0, interval: null };
+            } else if (type === 'dictionary') {
+                dictionaryStates[widgetId] = { result: '' };
+            } else if (type === 'music') {
+                const audio = document.getElementById(`music-player-${id}`);
+                audio.volume = 0.5;
+            }
+        }
+
+        function adjustContent(widget, type) {
+            if (type === 'timer' || type === 'pomodoro' || type === 'stopwatch') {
+                const display = widget.querySelector('.timer-display, .pomo-display, .stopwatch-display');
+                const width = widget.clientWidth;
+                const baseSize = 24;
+                const scaleFactor = Math.min(width / 200, 3);
+                display.style.fontSize = `${baseSize * scaleFactor}px`;
+            } else if (type === 'clicker') {
+                const clicker = widget.querySelector('.clicker-area');
+                const width = widget.clientWidth;
+                const baseSize = 24;
+                const scaleFactor = Math.min(width / 200, 3);
+                clicker.style.fontSize = `${baseSize * scaleFactor}px`;
+            }
+        }
+
+        function startCountdown(id) {
+            const input = document.getElementById(`timer-input-${id}`);
+            let time = parseInt(input.value) || 0;
+            if (time <= 0) return;
+
+            if (!timers[id]) {
+                timers[id] = { time: 0, interval: null, lastTick: null };
+            }
+            if (!timers[id].interval) {
+                timers[id].time = time;
+                timers[id].lastTick = Date.now();
+                timers[id].interval = setInterval(() => {
+                    const now = Date.now();
+                    const elapsed = (now - timers[id].lastTick) / 1000;
+                    if (elapsed >= 1) {
+                        timers[id].time = Math.max(0, timers[id].time - Math.floor(elapsed));
+                        timers[id].lastTick = now;
+                        updateCountdownDisplay(id);
+                        if (timers[id].time <= 0) {
+                            stopCountdown(id);
+                            timerEndSound.play();
+                        }
+                    }
+                }, 100); // Check every 100ms for precision
+            }
+        }
+
+        function stopCountdown(id) {
+            if (timers[id] && timers[id].interval) {
+                clearInterval(timers[id].interval);
+                timers[id].interval = null;
+                timers[id].lastTick = null;
+            }
+        }
+
+        function resetCountdown(id) {
+            if (timers[id]) {
+                stopCountdown(id);
+                timers[id].time = 0;
+                updateCountdownDisplay(id);
+            }
+        }
+
+        function updateCountdownDisplay(id) {
+            const display = document.getElementById(`timer-${id}`);
+            const time = timers[id].time;
+            const hours = Math.floor(time / 3600);
+            const minutes = Math.floor((time % 3600) / 60);
+            const seconds = time % 60;
+            display.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function addTodo(id) {
+            const input = document.getElementById(`todo-input-${id}`);
+            const text = input.value.trim();
+            if (text) {
+                const li = document.createElement('li');
+                li.textContent = text;
+                document.getElementById(`todo-${id}`).appendChild(li);
+                input.value = '';
+            }
+        }
+
+        function changeFontSize(id, change) {
+            const textarea = document.getElementById(`notes-${id}`);
+            const currentSize = parseInt(window.getComputedStyle(textarea).fontSize) || 16;
+            const newSize = Math.max(10, currentSize + change);
+            textarea.style.fontSize = `${newSize}px`;
+            textarea.focus();
+        }
+
+        function startPomodoro(id, minutes) {
+            if (!pomodoros[id]) {
+                pomodoros[id] = { time: 0, interval: null };
+            }
+            stopPomodoro(id);
+            pomodoros[id].time = minutes * 60;
+            pomodoros[id].interval = setInterval(() => {
+                pomodoros[id].time--;
+                updatePomoDisplay(id);
+                if (pomodoros[id].time <= 0) stopPomodoro(id);
+            }, 1000);
+        }
+
+        function stopPomodoro(id) {
+            if (pomodoros[id] && pomodoros[id].interval) {
+                clearInterval(pomodoros[id].interval);
+                pomodoros[id].interval = null;
+            }
+        }
+
+        function updatePomoDisplay(id) {
+            const display = document.getElementById(`pomo-${id}`);
+            const time = pomodoros[id].time;
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+            display.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateConverter(id) {
+            const typeSelect = document.getElementById(`converter-type-${id}`);
+            const fromSelect = document.getElementById(`converter-from-${id}`);
+            const toSelect = document.getElementById(`converter-to-${id}`);
+            const units = {
+                length: ['m', 'cm', 'km', 'in', 'ft', 'yd', 'mi'],
+                weight: ['g', 'kg', 'lb', 'oz', 't', 'mg'],
+                temperature: ['°C', '°F', 'K'],
+                area: ['m²', 'cm²', 'km²', 'ft²', 'in²', 'acre'],
+                volume: ['m³', 'cm³', 'L', 'gal', 'ft³', 'in³'],
+                speed: ['m/s', 'km/h', 'mph', 'ft/s'],
+                energy: ['J', 'kJ', 'cal', 'kcal', 'Wh', 'kWh']
+            };
+
+            const type = typeSelect.value;
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+            units[type].forEach(unit => {
+                const option1 = document.createElement('option');
+                const option2 = document.createElement('option');
+                option1.value = option1.text = unit;
+                option2.value = option2.text = unit;
+                fromSelect.appendChild(option1);
+                toSelect.appendChild(option2);
+            });
+            convertUnits(id);
+        }
+
+        function convertUnits(id) {
+            const input = document.getElementById(`converter-input-${id}`);
+            const output = document.getElementById(`converter-output-${id}`);
+            const from = document.getElementById(`converter-from-${id}`).value;
+            const to = document.getElementById(`converter-to-${id}`).value;
+            const type = document.getElementById(`converter-type-${id}`).value;
+            let value = parseFloat(input.value) || 0;
+
+            let result;
+            if (type === 'length') {
+                const toMeters = { 'm': 1, 'cm': 0.01, 'km': 1000, 'in': 0.0254, 'ft': 0.3048, 'yd': 0.9144, 'mi': 1609.34 };
+                const meters = value * toMeters[from];
+                result = meters / toMeters[to];
+            } else if (type === 'weight') {
+                const toGrams = { 'g': 1, 'kg': 1000, 'lb': 453.592, 'oz': 28.3495, 't': 1000000, 'mg': 0.001 };
+                const grams = value * toGrams[from];
+                result = grams / toGrams[to];
+            } else if (type === 'temperature') {
+                let celsius;
+                if (from === '°C') celsius = value;
+                else if (from === '°F') celsius = (value - 32) * 5/9;
+                else if (from === 'K') celsius = value - 273.15;
+
+                if (to === '°C') result = celsius;
+                else if (to === '°F') result = celsius * 9/5 + 32;
+                else if (to === 'K') result = celsius + 273.15;
+            } else if (type === 'area') {
+                const toSquareMeters = { 'm²': 1, 'cm²': 0.0001, 'km²': 1000000, 'ft²': 0.092903, 'in²': 0.00064516, 'acre': 4046.86 };
+                const squareMeters = value * toSquareMeters[from];
+                result = squareMeters / toSquareMeters[to];
+            } else if (type === 'volume') {
+                const toCubicMeters = { 'm³': 1, 'cm³': 0.000001, 'L': 0.001, 'gal': 0.00378541, 'ft³': 0.0283168, 'in³': 0.0000163871 };
+                const cubicMeters = value * toCubicMeters[from];
+                result = cubicMeters / toCubicMeters[to];
+            } else if (type === 'speed') {
+                const toMetersPerSecond = { 'm/s': 1, 'km/h': 0.277778, 'mph': 0.44704, 'ft/s': 0.3048 };
+                const metersPerSecond = value * toMetersPerSecond[from];
+                result = metersPerSecond / toMetersPerSecond[to];
+            } else if (type === 'energy') {
+                const toJoules = { 'J': 1, 'kJ': 1000, 'cal': 4.184, 'kcal': 4184, 'Wh': 3600, 'kWh': 3600000 };
+                const joules = value * toJoules[from];
+                result = joules / toJoules[to];
+            }
+
+            output.value = result.toFixed(2);
+        }
+
+        function clickCounter(id) {
+            clickers[id] = (clickers[id] || 0) + 1;
+            const clicker = document.getElementById(`clicker-${id}`);
+            clicker.textContent = clickers[id];
+        }
+
+        function uploadImage(id) {
+            const input = document.getElementById(`image-upload-${id}`);
+            const img = document.getElementById(`image-${id}`);
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function calcInput(id, value) {
+            calcStates[id] += value === 'pi' ? Math.PI : value === 'e' ? Math.E : value;
+            document.getElementById(`calc-input-${id}`).value = calcStates[id];
+        }
+
+        function calcResult(id) {
+            try {
+                let expression = calcStates[id]
+                    .replace(/sin\(/g, 'Math.sin(')
+                    .replace(/cos\(/g, 'Math.cos(')
+                    .replace(/tan\(/g, 'Math.tan(')
+                    .replace(/log\(/g, 'Math.log10(')
+                    .replace(/ln\(/g, 'Math.log(')
+                    .replace(/sqrt\(/g, 'Math.sqrt(')
+                    .replace(/\^/g, '**');
+                calcStates[id] = eval(expression).toString();
+                document.getElementById(`calc-input-${id}`).value = calcStates[id];
+            } catch (e) {
+                calcStates[id] = 'Error';
+                document.getElementById(`calc-input-${id}`).value = 'Error';
+            }
+        }
+
+        function calcClear(id) {
+            calcStates[id] = '';
+            document.getElementById(`calc-input-${id}`).value = '';
+        }
+
+        function calcBackspace(id) {
+            calcStates[id] = calcStates[id].slice(0, -1);
+            document.getElementById(`calc-input-${id}`).value = calcStates[id];
+        }
+
+        function moveTarget(id) {
+            const target = document.getElementById(`game-target-${id}`);
+            const area = document.getElementById(`game-area-${id}`);
+            const maxX = area.clientWidth - target.clientWidth;
+            const maxY = area.clientHeight - target.clientHeight - 20;
+            const newX = Math.floor(Math.random() * maxX);
+            const newY = Math.floor(Math.random() * maxY);
+            target.style.left = `${newX}px`;
+            target.style.top = `${newY}px`;
+            document.getElementById(`game-score-${id}`).textContent = `Score: ${gameStates[id].score}`;
+        }
+
+        function catchTarget(id) {
+            gameStates[id].score++;
+            moveTarget(id);
+        }
+
+        function startStopwatch(id) {
+            if (!stopwatches[id]) {
+                stopwatches[id] = { time: 0, interval: null };
+            }
+            if (!stopwatches[id].interval) {
+                stopwatches[id].interval = setInterval(() => {
+                    stopwatches[id].time++;
+                    updateStopwatchDisplay(id);
+                }, 1000);
+            }
+        }
+
+        function stopStopwatch(id) {
+            if (stopwatches[id] && stopwatches[id].interval) {
+                clearInterval(stopwatches[id].interval);
+                stopwatches[id].interval = null;
+            }
+        }
+
+        function resetStopwatch(id) {
+            if (stopwatches[id]) {
+                stopStopwatch(id);
+                stopwatches[id].time = 0;
+                updateStopwatchDisplay(id);
+            }
+        }
+
+        function updateStopwatchDisplay(id) {
+            const display = document.getElementById(`stopwatch-${id}`);
+            const time = stopwatches[id].time;
+            const hours = Math.floor(time / 3600);
+            const minutes = Math.floor((time % 3600) / 60);
+            const seconds = time % 60;
+            display.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        async function lookupWord(id) {
+            const input = document.getElementById(`dictionary-input-${id}`).value.trim();
+            const resultDiv = document.getElementById(`dictionary-result-${id}`);
+            if (!input) return;
+
+            try {
+                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${input}`);
+                const data = await response.json();
+                if (data.title === "No Definitions Found") {
+                    resultDiv.innerHTML = '<div class="dictionary-entry">Word not found.</div>';
+                } else {
+                    const entry = data[0];
+                    const definition = entry.meanings[0].definitions[0].definition;
+                    const synonyms = entry.meanings[0].definitions[0].synonyms?.slice(0, 3).join(', ') || 'None';
+                    const example = entry.meanings[0].definitions[0].example || 'No example available.';
+                    resultDiv.innerHTML = `
+                        <div class="dictionary-entry">
+                            <p><strong>Word:</strong> ${input}</p>
+                            <p><strong>Definition:</strong> ${definition}</p>
+                            <p><strong>Synonyms:</strong> ${synonyms}</p>
+                            <p><strong>Example:</strong> ${example}</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                resultDiv.innerHTML = '<div class="dictionary-entry">Error fetching definition.</div>';
+                console.log('Dictionary error:', e);
+            }
+        }
+
+        function addGradeRow(id) {
+            const tbody = document.getElementById(`grade-rows-${id}`);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="grade-input" placeholder="Assignment"></td>
+                <td><input type="number" class="grade-input" placeholder="Score" min="0"></td>
+                <td><input type="number" class="grade-input" placeholder="Weight" min="0" max="100"></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function calculateGrade(id) {
+            const tbody = document.getElementById(`grade-rows-${id}`);
+            const rows = tbody.getElementsByTagName('tr');
+            const resultDiv = document.getElementById(`grade-result-${id}`);
+            let totalWeightedScore = 0;
+            let totalWeight = 0;
+
+            for (let row of rows) {
+                const inputs = row.getElementsByTagName('input');
+                const name = inputs[0].value.trim();
+                const score = parseFloat(inputs[1].value) || 0;
+                const weight = parseFloat(inputs[2].value) || 0;
+
+                if (weight > 0) {
+                    totalWeightedScore += (score * weight);
+                    totalWeight += weight;
+                }
+            }
+
+            if (totalWeight <= 0) {
+                resultDiv.textContent = "Total weight must be greater than 0";
+                return;
+            }
+
+            const weightedAverage = totalWeightedScore / totalWeight;
+            let letterGrade;
+            if (weightedAverage >= 90) letterGrade = 'A';
+            else if (weightedAverage >= 80) letterGrade = 'B';
+            else if (weightedAverage >= 70) letterGrade = 'C';
+            else if (weightedAverage >= 60) letterGrade = 'D';
+            else letterGrade = 'F';
+
+            resultDiv.textContent = `Weighted Average: ${weightedAverage.toFixed(2)}% (${letterGrade})`;
+        }
+
+        function loadPDF(id) {
+            const input = document.getElementById(`pdf-upload-${id}`);
+            const viewer = document.getElementById(`pdf-viewer-${id}`);
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const pdfData = e.target.result;
+                    viewer.src = pdfData;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function toggleMusic(id) {
+            const audio = document.getElementById(`music-player-${id}`);
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        }
+    </script>
+</body>
+</html>
